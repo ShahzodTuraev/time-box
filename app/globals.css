@@ -1,26 +1,98 @@
 @import "tailwindcss";
 
+/* Design tokens — light mode. Values from the validated reference palette. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* Chrome & ink */
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --hairline: #e1e0d9;
+  --axis: #c3c2b7;
+  --edge: rgba(11, 11, 11, 0.1);
+  --wash: rgba(11, 11, 11, 0.05);
+
+  /* Accent (categorical slot 1 — blue) */
+  --accent: #2a78d6;
+  --accent-hover: #256abf;
+
+  /* Day cycle (blue) + its lighter same-ramp track */
+  --day: #2a78d6;
+  --day-track: #cde2fb;
+
+  /* Timer series (categorical slots 2-8) + lighter same-hue tracks */
+  --series-1: #eb6834;
+  --series-1-track: #f9e2d7;
+  --series-2: #1baf7a;
+  --series-2-track: #d9f0e6;
+  --series-3: #eda100;
+  --series-3-track: #f9ecd0;
+  --series-4: #e87ba4;
+  --series-4-track: #fae4ec;
+  --series-5: #008300;
+  --series-5-track: #d4e8d4;
+  --series-6: #6250d6;
+  --series-6-track: #e2dff7;
+  --series-7: #e34948;
+  --series-7-track: #f9dcdc;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* Dark mode — the same hues re-stepped for the dark surface, not an inversion. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --hairline: #2c2c2a;
+    --axis: #383835;
+    --edge: rgba(255, 255, 255, 0.1);
+    --wash: rgba(255, 255, 255, 0.1);
+
+    --accent: #3987e5;
+    --accent-hover: #2a78d6;
+
+    --day: #3987e5;
+    --day-track: #0d366b;
+
+    --series-1: #d95926;
+    --series-1-track: #43271b;
+    --series-2: #199e70;
+    --series-2-track: #17352a;
+    --series-3: #c98500;
+    --series-3-track: #3c2e10;
+    --series-4: #d55181;
+    --series-4-track: #3e2029;
+    --series-5: #008300;
+    --series-5-track: #122b12;
+    --series-6: #9085e9;
+    --series-6-track: #2b2741;
+    --series-7: #e66767;
+    --series-7-track: #412020;
   }
 }
 
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Electron widget mode: draggable window regions */
+.app-drag {
+  -webkit-app-region: drag;
+}
+.app-no-drag {
+  -webkit-app-region: no-drag;
 }

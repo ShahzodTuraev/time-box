@@ -2,8 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Static export so the Electron app can serve the page from `out/`.
+  // cacheComponents/partialPrefetching (PPR) are unsupported in export mode.
+  output: "export",
   turbopack: {
     rules: {
       "*.css": {
