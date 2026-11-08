@@ -179,6 +179,8 @@ export default function Home() {
   const [formOpen, setFormOpen] = useState(false);
   const [draft, setDraft] = useState({ label: "", start: "09:00", end: "17:00" });
   const [isApp, setIsApp] = useState(false);
+  const [showSeconds, setShowSeconds] = useState(true);
+  const [showTenth, setShowTenth] = useState(true);
   const [widgetView, setWidgetView] = useState(false);
   const [canPip, setCanPip] = useState(false);
   const [pipWin, setPipWin] = useState<Window | null>(null);
@@ -288,6 +290,44 @@ export default function Home() {
     remaining = `${Math.floor(left / 3600)}h ${pad(Math.floor((left % 3600) / 60))}m left`;
   }
 
+  // Clock segments: clicking ":ss" hides the seconds and tenths together,
+  // clicking ".t" hides only the tenths, and clicking the remaining clock
+  // brings everything back.
+  const allShown = showSeconds && showTenth;
+  const showAll = () => {
+    setShowSeconds(true);
+    setShowTenth(true);
+  };
+  const clockDigits = (
+    <>
+      {clock.hh}:{clock.mm}
+      {showSeconds && (
+        <span
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowSeconds(false);
+          }}
+          title="Click to hide seconds"
+          className="cursor-pointer"
+        >
+          :{clock.ss}
+        </span>
+      )}
+      {showSeconds && showTenth && (
+        <span
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowTenth(false);
+          }}
+          title="Click to hide tenths"
+          className="cursor-pointer text-(--accent)"
+        >
+          .{clock.tenth}
+        </span>
+      )}
+    </>
+  );
+
   // The compact widget card. Rendered as the whole page in the Electron
   // widget window (with its own window controls), and portaled into the
   // Document PiP window in the browser (PiP has native controls).
@@ -309,9 +349,12 @@ export default function Home() {
         <span className="text-[9px] font-semibold uppercase tracking-[0.25em] text-(--muted)">
           Time Box
         </span>
-        <p className="mt-0.5 font-mono text-2xl font-semibold leading-none tabular-nums text-(--ink)">
-          {clock.hh}:{clock.mm}:{clock.ss}
-          <span className="text-(--accent)">.{clock.tenth}</span>
+        <p
+          onClick={allShown ? undefined : showAll}
+          title={allShown ? undefined : "Click to show the hidden digits"}
+          className={`app-no-drag mt-0.5 select-none font-mono text-2xl font-semibold leading-none tabular-nums text-(--ink) ${allShown ? "" : "cursor-pointer"}`}
+        >
+          {clockDigits}
         </p>
         <p className="mt-1 truncate text-[11px] text-(--muted)">
           {remaining} today
@@ -417,10 +460,13 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Clock — hero figure */}
-        <p className="text-center font-mono text-5xl font-semibold tabular-nums text-(--ink)">
-          {clock.hh}:{clock.mm}:{clock.ss}
-          <span className="text-(--accent)">.{clock.tenth}</span>
+        {/* Clock — hero figure; segments hide on click, clock click restores */}
+        <p
+          onClick={allShown ? undefined : showAll}
+          title={allShown ? undefined : "Click to show the hidden digits"}
+          className={`select-none text-center font-mono text-5xl font-semibold tabular-nums text-(--ink) ${allShown ? "" : "cursor-pointer"}`}
+        >
+          {clockDigits}
         </p>
 
         <hr className="border-0 border-t border-(--hairline)" />
