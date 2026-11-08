@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Time Box
 
-## Getting Started
+A live clock that makes you feel time passing — with day-completion and custom
+time-range progress shown as cycles.
 
-First, run the development server:
+**Production:** [https://timer-box.vercel.app/](https://timer-box.vercel.app/)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+![Time Box](app/favicon.ico)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Live clock** — hours, minutes, seconds, and a tenths-of-a-second digit
+  (one tick every 0.1 s), updated every animation frame.
+- **Day cycle** — a progress ring showing how much of today has passed
+  (at 12:00 it reads 50%), with the time left in the day.
+- **Custom timers** — add your own time ranges (working hours, a task, a
+  break…) with start and end times. Each renders as a colored progress ring
+  with the time left, "Starts in…", or "Done". Progress is monotonic: once a
+  range has passed, it stays at 100% and never resets during the day.
+  Overnight ranges (e.g. 22:00–06:00) are supported. Timers are saved in the
+  browser (localStorage) and sync across tabs.
+- **Floating widget** — the **Widget** button pops the Time Box into a small
+  always-on-top window:
+  - **Web** (Chrome/Edge): uses the Document Picture-in-Picture API. The
+    widget shows the Time Box content flat (no card frame), always in light
+    mode, and stays above other windows. The button is hidden in browsers
+    without the API (Firefox/Safari).
+  - **Desktop app** (Electron): swaps to a tiny frameless, draggable,
+    always-on-top pill with the clock and the day ring.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Command           | What it does                                                   |
+| ----------------- | -------------------------------------------------------------- |
+| `npm run dev`     | Start the Next.js dev server at `http://localhost:3000`.       |
+| `npm run build`   | Build the static export into `out/`.                           |
+| `npm run app`     | Build, then open the desktop app (always-on-top window).       |
+| `npm run app:dev` | Open the desktop app pointed at the running dev server.        |
+| `npm run lint`    | Run ESLint.                                                    |
 
-To learn more about Next.js, take a look at the following resources:
+## Deployment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The production site is deployed on Vercel at
+[https://timer-box.vercel.app/](https://timer-box.vercel.app/).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The project uses `output: "export"` (static export), so no special Vercel
+configuration is needed — `next build` produces the site. Everything is
+client-side; the floating widget works over HTTPS out of the box.
 
-## Deploy on Vercel
+## Desktop app
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`electron/main.js` serves the static export from `out/` on a fixed local port
+(so saved timers persist between launches) and opens a compact window at the
+highest always-on-top level — new windows open underneath it. The **Widget**
+button shrinks it to a frameless mini-pill; the pill's arrow button expands it
+back.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Note: the desktop app and the website are different origins, so each keeps its
+own timer list.
+
+## Tech
+
+- [Next.js](https://nextjs.org) 16 (App Router, static export) + React 19
+- Tailwind CSS 4, with design tokens (light/dark) defined in
+  `app/globals.css`
+- Electron (dev dependency) for the desktop app
+- Colors come from a colorblind-validated palette; each progress ring pairs a
+  hue with a lighter track of the same hue, re-stepped separately for dark
+  mode.

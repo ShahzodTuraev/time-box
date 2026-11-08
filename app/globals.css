@@ -40,9 +40,10 @@
   --series-7-track: #f9dcdc;
 }
 
-/* Dark mode — the same hues re-stepped for the dark surface, not an inversion. */
+/* Dark mode — the same hues re-stepped for the dark surface, not an inversion.
+   A data-theme="light" stamp (used by the widget) beats OS-dark. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
 
     --page: #0d0d0d;

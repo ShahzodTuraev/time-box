@@ -79,7 +79,7 @@ function createWindow(widget, position) {
     ? new BrowserWindow({
         ...common,
         width: 336,
-        height: 92,
+        height: 104,
         frame: false,
         transparent: true,
         resizable: false,

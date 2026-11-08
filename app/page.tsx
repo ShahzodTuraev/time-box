@@ -1,11 +1,40 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 declare global {
   interface Window {
     // Exposed by the Electron preload script; absent in the browser.
     timebox?: { setWidget: (on: boolean) => void };
+    // Document Picture-in-Picture (Chromium): floating always-on-top window.
+    documentPictureInPicture?: {
+      requestWindow(options?: {
+        width?: number;
+        height?: number;
+      }): Promise<Window>;
+    };
+  }
+}
+
+// Copy this document's styles into another document (the PiP window).
+function copyStyles(target: Document) {
+  for (const sheet of Array.from(document.styleSheets)) {
+    try {
+      const css = Array.from(sheet.cssRules)
+        .map((rule) => rule.cssText)
+        .join("\n");
+      const style = target.createElement("style");
+      style.textContent = css;
+      target.head.appendChild(style);
+    } catch {
+      if (sheet.href) {
+        const link = target.createElement("link");
+        link.rel = "stylesheet";
+        link.href = sheet.href;
+        target.head.appendChild(link);
+      }
+    }
   }
 }
 
@@ -151,11 +180,16 @@ export default function Home() {
   const [draft, setDraft] = useState({ label: "", start: "09:00", end: "17:00" });
   const [isApp, setIsApp] = useState(false);
   const [widgetView, setWidgetView] = useState(false);
+  const [canPip, setCanPip] = useState(false);
+  const [pipWin, setPipWin] = useState<Window | null>(null);
 
   useEffect(() => {
     setIsApp(typeof window.timebox !== "undefined");
+    setCanPip(typeof window.documentPictureInPicture !== "undefined");
     if (new URLSearchParams(window.location.search).has("widget")) {
       setWidgetView(true);
+      // The widget always renders in light mode.
+      document.documentElement.dataset.theme = "light";
       // The widget window is frameless and transparent; let the rounded
       // card be the only visible surface.
       document.documentElement.style.backgroundColor = "transparent";
@@ -254,30 +288,36 @@ export default function Home() {
     remaining = `${Math.floor(left / 3600)}h ${pad(Math.floor((left % 3600) / 60))}m left`;
   }
 
-  if (widgetView) {
-    return (
-      <div className="app-drag flex h-dvh w-screen items-center gap-3 rounded-2xl border border-(--edge) bg-(--surface) px-4 font-sans shadow-lg">
-        <Ring
-          pct={dayPct}
-          color={DAY_COLOR}
-          label="Day"
-          sizeClass="h-12 w-12"
-          center={
-            <span className="text-[10px]">
-              {Math.round(dayPct)}
-              <span className="text-[8px] font-normal text-(--muted)">%</span>
-            </span>
-          }
-        />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <p className="font-mono text-2xl font-semibold leading-none tabular-nums text-(--ink)">
-            {clock.hh}:{clock.mm}:{clock.ss}
-            <span className="text-(--accent)">.{clock.tenth}</span>
-          </p>
-          <p className="mt-1 truncate text-[11px] text-(--muted)">
-            {remaining} today
-          </p>
-        </div>
+  // The compact widget card. Rendered as the whole page in the Electron
+  // widget window (with its own window controls), and portaled into the
+  // Document PiP window in the browser (PiP has native controls).
+  const widgetCard = (showControls: boolean) => (
+    <div className="app-drag flex h-dvh w-screen items-center gap-3 rounded-2xl border border-(--edge) bg-(--surface) px-4 font-sans shadow-lg">
+      <Ring
+        pct={dayPct}
+        color={DAY_COLOR}
+        label="Day"
+        sizeClass="h-12 w-12"
+        center={
+          <span className="text-[10px]">
+            {Math.round(dayPct)}
+            <span className="text-[8px] font-normal text-(--muted)">%</span>
+          </span>
+        }
+      />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.25em] text-(--muted)">
+          Time Box
+        </span>
+        <p className="mt-0.5 font-mono text-2xl font-semibold leading-none tabular-nums text-(--ink)">
+          {clock.hh}:{clock.mm}:{clock.ss}
+          <span className="text-(--accent)">.{clock.tenth}</span>
+        </p>
+        <p className="mt-1 truncate text-[11px] text-(--muted)">
+          {remaining} today
+        </p>
+      </div>
+      {showControls && (
         <div className="app-no-drag flex flex-col items-center">
           <button
             type="button"
@@ -312,17 +352,49 @@ export default function Home() {
             ×
           </button>
         </div>
-      </div>
-    );
+      )}
+    </div>
+  );
+
+  if (widgetView) {
+    return widgetCard(true);
   }
+
+  const openWidget = async () => {
+    // Electron: swap to the frameless widget window.
+    if (window.timebox) {
+      window.timebox.setWidget(true);
+      return;
+    }
+    // Browser: toggle a Document Picture-in-Picture window.
+    if (pipWin) {
+      pipWin.close();
+      setPipWin(null);
+      return;
+    }
+    const dpp = window.documentPictureInPicture;
+    if (!dpp) return;
+    const pip = await dpp.requestWindow({ width: 470, height: 360 });
+    copyStyles(pip.document);
+    pip.document.title = "Time Box";
+    pip.document.documentElement.dataset.theme = "light"; // widget stays light
+    pip.document.body.style.margin = "0";
+    pip.addEventListener("pagehide", () => setPipWin(null));
+    setPipWin(pip);
+  };
 
   const inputCls =
     "rounded-lg border border-(--edge) bg-transparent px-2.5 py-1.5 text-sm text-(--ink) outline-none focus:border-(--accent)";
 
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center bg-(--page) px-4 py-6 font-sans">
+  // The Time Box content — on the page it sits in the bordered card; in the
+  // floating widget it fills the window flat, with no card frame.
+  const mainCard = (flat = false) => (
       <main
-        className="flex w-full max-w-xl flex-col gap-5 rounded-2xl border border-(--edge) bg-(--surface) p-6 shadow-sm sm:p-8"
+        className={
+          flat
+            ? "flex min-h-dvh w-full flex-col gap-3 bg-(--surface) p-4"
+            : "flex w-full max-w-xl flex-col gap-5 rounded-2xl border border-(--edge) bg-(--surface) p-6 shadow-sm sm:p-8"
+        }
         suppressHydrationWarning
       >
         {/* Header */}
@@ -332,14 +404,14 @@ export default function Home() {
           </h1>
           <div className="flex items-center gap-3">
             <p className="text-xs text-(--ink-2)">{dateLine}</p>
-            {isApp && (
+            {(isApp || canPip) && (
               <button
                 type="button"
-                onClick={() => window.timebox?.setWidget(true)}
+                onClick={openWidget}
                 title="Shrink to a floating widget"
                 className="rounded-full border border-(--edge) px-2.5 py-0.5 text-[11px] text-(--ink-2) transition-colors hover:border-(--accent) hover:text-(--accent)"
               >
-                Widget
+                {pipWin ? "Close widget" : "Widget"}
               </button>
             )}
           </div>
@@ -471,6 +543,12 @@ export default function Home() {
           </form>
         )}
       </main>
+  );
+
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center bg-(--page) px-4 py-6 font-sans">
+      {mainCard()}
+      {pipWin && createPortal(mainCard(true), pipWin.document.body)}
     </div>
   );
 }
