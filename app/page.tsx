@@ -97,11 +97,16 @@ function trackerState(tracker: Tracker, nowMin: number) {
 
   if (endM > startM) {
     if (nowMin < startM)
-      return { pct: 0, status: `Starts in ${fmtDur(startM - nowMin)}` };
-    if (nowMin >= endM) return { pct: 100, status: "Done" };
+      return {
+        pct: 0,
+        status: `Starts in ${fmtDur(startM - nowMin)}`,
+        active: false,
+      };
+    if (nowMin >= endM) return { pct: 100, status: "Done", active: false };
     return {
       pct: ((nowMin - startM) / (endM - startM)) * 100,
       status: `${fmtDur(endM - nowMin)} left`,
+      active: true,
     };
   }
 
@@ -111,14 +116,16 @@ function trackerState(tracker: Tracker, nowMin: number) {
     return {
       pct: ((nowMin - startM) / duration) * 100,
       status: `${fmtDur(startM + duration - nowMin)} left`,
+      active: true,
     };
   if (nowMin < endM)
     return {
       pct: ((nowMin + 1440 - startM) / duration) * 100,
       status: `${fmtDur(endM - nowMin)} left`,
+      active: true,
     };
   // Daytime gap after this morning's end: already finished — stays at 100%.
-  return { pct: 100, status: "Done" };
+  return { pct: 100, status: "Done", active: false };
 }
 
 function Ring({
@@ -461,6 +468,45 @@ export default function Home() {
   const inputCls =
     "rounded-lg border border-(--edge) bg-transparent px-2.5 py-1.5 text-sm text-(--ink) outline-none focus:border-(--accent)";
 
+  const trackerEntries = trackers.map((tracker) => ({
+    tracker,
+    state: now
+      ? trackerState(tracker, nowMin)
+      : { pct: 0, status: " ", active: false },
+  }));
+
+  const trackerCard = ({
+    tracker,
+    state,
+  }: (typeof trackerEntries)[number]) => {
+    const color = RING_COLORS[tracker.color % RING_COLORS.length];
+    return (
+      <div
+        key={tracker.id}
+        className="group relative flex flex-col items-center gap-1.5 text-center"
+      >
+        <button
+          type="button"
+          onClick={() => persist(trackers.filter((t) => t.id !== tracker.id))}
+          aria-label={`Remove ${tracker.label}`}
+          className="absolute -top-1 right-0 hidden h-6 w-6 items-center justify-center rounded-full text-(--muted) hover:bg-(--wash) group-hover:flex"
+        >
+          ×
+        </button>
+        <Ring pct={state.pct} color={color} label={tracker.label} />
+        <div className="flex flex-col">
+          <span className="max-w-24 truncate text-xs font-medium text-(--ink)">
+            {tracker.label}
+          </span>
+          <span className="text-[11px] tabular-nums text-(--ink-2)">
+            {tracker.start} – {tracker.end}
+          </span>
+          <span className="text-[11px] text-(--muted)">{state.status}</span>
+        </div>
+      </div>
+    );
+  };
+
   // The Time Box content — on the page it sits in the bordered card; in the
   // floating widget it fills the window flat, with no card frame.
   const mainCard = (flat = false) => (
@@ -513,7 +559,7 @@ export default function Home() {
 
         <hr className="border-0 border-t border-(--hairline)" />
 
-        {/* Cycles: day first, then timers, then add */}
+        {/* Current cycles: day + timers running right now */}
         <div className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4">
           <div className="flex flex-col items-center gap-1.5 text-center">
             <Ring
@@ -533,41 +579,16 @@ export default function Home() {
             </div>
           </div>
 
-          {trackers.map((tracker) => {
-            const color = RING_COLORS[tracker.color % RING_COLORS.length];
-            const state = now
-              ? trackerState(tracker, nowMin)
-              : { pct: 0, status: " " };
-            return (
-              <div
-                key={tracker.id}
-                className="group relative flex flex-col items-center gap-1.5 text-center"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    persist(trackers.filter((t) => t.id !== tracker.id))
-                  }
-                  aria-label={`Remove ${tracker.label}`}
-                  className="absolute -top-1 right-0 hidden h-6 w-6 items-center justify-center rounded-full text-(--muted) hover:bg-(--wash) group-hover:flex"
-                >
-                  ×
-                </button>
-                <Ring pct={state.pct} color={color} label={tracker.label} />
-                <div className="flex flex-col">
-                  <span className="max-w-24 truncate text-xs font-medium text-(--ink)">
-                    {tracker.label}
-                  </span>
-                  <span className="text-[11px] tabular-nums text-(--ink-2)">
-                    {tracker.start} – {tracker.end}
-                  </span>
-                  <span className="text-[11px] text-(--muted)">
-                    {state.status}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+          {trackerEntries
+            .filter(({ state }) => state.active)
+            .map(trackerCard)}
+        </div>
+
+        {/* Completed and upcoming timers on their own line */}
+        <div className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4">
+          {trackerEntries
+            .filter(({ state }) => !state.active)
+            .map(trackerCard)}
 
           <button
             type="button"
