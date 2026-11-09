@@ -19,6 +19,12 @@ time-range progress shown as cycles.
   range has passed, it stays at 100% and never resets during the day.
   Overnight ranges (e.g. 22:00–06:00) are supported. Timers are saved in the
   browser (localStorage) and sync across tabs.
+- **Open in app** — the site is an installable PWA (web app manifest +
+  icons). In browsers that support installation (Chrome/Edge), an **Open in
+  app** button appears in the header; it triggers the browser's install
+  prompt and opens Time Box as a standalone application window with its own
+  icon in the taskbar/dock. Once installed the button disappears (launch it
+  from the OS instead).
 - **Floating widget** — the **Widget** button pops the Time Box into a small
   always-on-top window:
   - **Web** (Chrome/Edge): uses the Document Picture-in-Picture API. The

@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+// Chromium's install prompt event (not yet in the TS DOM lib).
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 declare global {
   interface Window {
     // Exposed by the Electron preload script; absent in the browser.
@@ -184,6 +190,9 @@ export default function Home() {
   const [widgetView, setWidgetView] = useState(false);
   const [canPip, setCanPip] = useState(false);
   const [pipWin, setPipWin] = useState<Window | null>(null);
+  const [installEvt, setInstallEvt] = useState<BeforeInstallPromptEvent | null>(
+    null
+  );
 
   useEffect(() => {
     setIsApp(typeof window.timebox !== "undefined");
@@ -218,6 +227,17 @@ export default function Home() {
     };
     window.addEventListener("storage", onStorage);
 
+    // "Open in app": the browser fires beforeinstallprompt when the site is
+    // installable and not yet installed. Defer it to our own button; after
+    // installation (appinstalled) the button disappears.
+    const onInstallable = (e: Event) => {
+      e.preventDefault();
+      setInstallEvt(e as BeforeInstallPromptEvent);
+    };
+    const onInstalled = () => setInstallEvt(null);
+    window.addEventListener("beforeinstallprompt", onInstallable);
+    window.addEventListener("appinstalled", onInstalled);
+
     let frame: number;
     const tick = () => {
       setNow(new Date());
@@ -227,6 +247,8 @@ export default function Home() {
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener("storage", onStorage);
+      window.removeEventListener("beforeinstallprompt", onInstallable);
+      window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
 
@@ -426,6 +448,16 @@ export default function Home() {
     setPipWin(pip);
   };
 
+  // Hand the deferred install prompt to the browser; on accept it installs
+  // the PWA and opens it in its own application window. The event is
+  // single-use, so drop it either way (if dismissed, the browser fires a
+  // fresh one on the next visit).
+  const openInApp = async () => {
+    if (!installEvt) return;
+    setInstallEvt(null);
+    await installEvt.prompt();
+  };
+
   const inputCls =
     "rounded-lg border border-(--edge) bg-transparent px-2.5 py-1.5 text-sm text-(--ink) outline-none focus:border-(--accent)";
 
@@ -447,6 +479,16 @@ export default function Home() {
           </h1>
           <div className="flex items-center gap-3">
             <p className="text-xs text-(--ink-2)">{dateLine}</p>
+            {installEvt && (
+              <button
+                type="button"
+                onClick={openInApp}
+                title="Install and open as a standalone app"
+                className="rounded-full border border-(--edge) px-2.5 py-0.5 text-[11px] text-(--ink-2) transition-colors hover:border-(--accent) hover:text-(--accent)"
+              >
+                Open in app
+              </button>
+            )}
             {(isApp || canPip) && (
               <button
                 type="button"
