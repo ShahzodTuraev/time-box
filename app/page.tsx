@@ -193,7 +193,6 @@ export default function Home() {
   const [draft, setDraft] = useState({ label: "", start: "09:00", end: "17:00" });
   const [isApp, setIsApp] = useState(false);
   const [showSeconds, setShowSeconds] = useState(true);
-  const [showTenth, setShowTenth] = useState(true);
   const [widgetView, setWidgetView] = useState(false);
   const [canPip, setCanPip] = useState(false);
   const [pipWin, setPipWin] = useState<Window | null>(null);
@@ -287,7 +286,7 @@ export default function Home() {
     setFormOpen(false);
   };
 
-  let clock = { hh: "--", mm: "--", ss: "--", tenth: "-" };
+  let clock = { hh: "--", mm: "--", ss: "--" };
   let dateLine = " ";
   let dayPct = 0;
   let remaining = "";
@@ -303,7 +302,6 @@ export default function Home() {
       hh: pad(h),
       mm: pad(m),
       ss: pad(s),
-      tenth: String(Math.floor(ms / 100)),
     };
     dateLine = now.toLocaleDateString("en-US", {
       weekday: "long",
@@ -319,13 +317,11 @@ export default function Home() {
     remaining = `${Math.floor(left / 3600)}h ${pad(Math.floor((left % 3600) / 60))}m left`;
   }
 
-  // Clock segments: clicking ":ss" hides the seconds and tenths together,
-  // clicking ".t" hides only the tenths, and clicking the remaining clock
-  // brings everything back.
-  const allShown = showSeconds && showTenth;
+  // Clock segments: clicking ":ss" hides the seconds, and clicking the
+  // remaining clock brings them back.
+  const allShown = showSeconds;
   const showAll = () => {
     setShowSeconds(true);
-    setShowTenth(true);
   };
   const clockDigits = (
     <>
@@ -340,18 +336,6 @@ export default function Home() {
           className="cursor-pointer"
         >
           :{clock.ss}
-        </span>
-      )}
-      {showSeconds && showTenth && (
-        <span
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowTenth(false);
-          }}
-          title="Click to hide tenths"
-          className="cursor-pointer text-(--accent)"
-        >
-          .{clock.tenth}
         </span>
       )}
     </>
