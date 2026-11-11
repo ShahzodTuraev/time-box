@@ -78,8 +78,8 @@ function createWindow(widget, position) {
   const win = widget
     ? new BrowserWindow({
         ...common,
-        width: 336,
-        height: 104,
+        width: 480,
+        height: 110,
         frame: false,
         transparent: true,
         resizable: false,
