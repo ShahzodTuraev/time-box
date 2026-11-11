@@ -59,13 +59,13 @@ type Tracker = {
 // Categorical slots 2-8 of the validated reference palette (slot 1 blue is the
 // day cycle). Track = lighter step of the same hue. Values live in globals.css.
 const RING_COLORS = [
-  { fill: "stroke-(--series-1)", track: "stroke-(--series-1-track)" },
-  { fill: "stroke-(--series-2)", track: "stroke-(--series-2-track)" },
-  { fill: "stroke-(--series-3)", track: "stroke-(--series-3-track)" },
-  { fill: "stroke-(--series-4)", track: "stroke-(--series-4-track)" },
-  { fill: "stroke-(--series-5)", track: "stroke-(--series-5-track)" },
-  { fill: "stroke-(--series-6)", track: "stroke-(--series-6-track)" },
-  { fill: "stroke-(--series-7)", track: "stroke-(--series-7-track)" },
+  { fill: "stroke-(--series-1)", track: "stroke-(--series-1-track)", disc: "fill-(--series-1-track)" },
+  { fill: "stroke-(--series-2)", track: "stroke-(--series-2-track)", disc: "fill-(--series-2-track)" },
+  { fill: "stroke-(--series-3)", track: "stroke-(--series-3-track)", disc: "fill-(--series-3-track)" },
+  { fill: "stroke-(--series-4)", track: "stroke-(--series-4-track)", disc: "fill-(--series-4-track)" },
+  { fill: "stroke-(--series-5)", track: "stroke-(--series-5-track)", disc: "fill-(--series-5-track)" },
+  { fill: "stroke-(--series-6)", track: "stroke-(--series-6-track)", disc: "fill-(--series-6-track)" },
+  { fill: "stroke-(--series-7)", track: "stroke-(--series-7-track)", disc: "fill-(--series-7-track)" },
 ];
 
 const YEAR_COLOR = { fill: "stroke-(--year)", track: "stroke-(--year-track)" };
@@ -141,12 +141,15 @@ function Ring({
   label,
   center,
   sizeClass = "h-20 w-20",
+  disc,
 }: {
   pct: number;
   color: { fill: string; track: string };
   label: string;
   center?: React.ReactNode;
   sizeClass?: string;
+  // Fill class for a soft disc inside the ring (used by finished timers).
+  disc?: string;
 }) {
   const r = 42;
   const c = 2 * Math.PI * r;
@@ -160,6 +163,7 @@ function Ring({
       aria-label={`${label} complete`}
     >
       <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+        {disc && <circle cx="50" cy="50" r="33" className={disc} />}
         <circle
           cx="50"
           cy="50"
@@ -938,6 +942,7 @@ export default function Home() {
     state,
   }: (typeof trackerEntries)[number]) => {
     const color = RING_COLORS[tracker.color % RING_COLORS.length];
+    const done = !state.active && state.pct >= 100;
     return (
       <div
         key={tracker.id}
@@ -952,7 +957,29 @@ export default function Home() {
         >
           ×
         </button>
-        <Ring pct={state.pct} color={color} label={tracker.label} />
+        <Ring
+          pct={state.pct}
+          color={color}
+          label={tracker.label}
+          disc={done ? color.disc : undefined}
+          center={
+            done ? (
+              <svg
+                width="30"
+                height="30"
+                viewBox="0 0 24 24"
+                fill="none"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={color.fill}
+                aria-hidden="true"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : undefined
+          }
+        />
         <div className="flex flex-col">
           <span className="max-w-24 truncate text-xs font-medium text-(--ink)">
             {tracker.label}
