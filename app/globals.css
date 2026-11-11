@@ -19,7 +19,12 @@
   --accent: #2a78d6;
   --accent-hover: #256abf;
 
-  /* Day cycle (blue) + its lighter same-ramp track */
+  /* Calendar cycles: year (teal), month (magenta), day (blue),
+     each with its lighter same-hue track */
+  --year: #0e9888;
+  --year-track: #d2ece9;
+  --month: #b04ad4;
+  --month-track: #efdcf6;
   --day: #2a78d6;
   --day-track: #cde2fb;
 
@@ -59,6 +64,10 @@
     --accent: #3987e5;
     --accent-hover: #2a78d6;
 
+    --year: #1fae9d;
+    --year-track: #0c3832;
+    --month: #c266e2;
+    --month-track: #3c1949;
     --day: #3987e5;
     --day-track: #0d366b;
 

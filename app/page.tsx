@@ -68,6 +68,11 @@ const RING_COLORS = [
   { fill: "stroke-(--series-7)", track: "stroke-(--series-7-track)" },
 ];
 
+const YEAR_COLOR = { fill: "stroke-(--year)", track: "stroke-(--year-track)" };
+const MONTH_COLOR = {
+  fill: "stroke-(--month)",
+  track: "stroke-(--month-track)",
+};
 const DAY_COLOR = { fill: "stroke-(--day)", track: "stroke-(--day-track)" };
 
 const DEFAULT_TRACKERS: Tracker[] = [
@@ -76,6 +81,7 @@ const DEFAULT_TRACKERS: Tracker[] = [
 ];
 
 const STORAGE_KEY = "time-box-trackers";
+const HIDDEN_CYCLES_KEY = "time-box-hidden-cycles";
 
 function minutesOf(t: string) {
   const [h, m] = t.split(":").map(Number);
@@ -192,6 +198,7 @@ export default function Home() {
   const [formOpen, setFormOpen] = useState(false);
   const [draft, setDraft] = useState({ label: "", start: "09:00", end: "17:00" });
   const [isApp, setIsApp] = useState(false);
+  const [hiddenCycles, setHiddenCycles] = useState<string[]>([]);
   const [showSeconds, setShowSeconds] = useState(true);
   const [widgetView, setWidgetView] = useState(false);
   const [canPip, setCanPip] = useState(false);
@@ -219,6 +226,8 @@ export default function Home() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setTrackers(JSON.parse(raw));
+      const hidden = localStorage.getItem(HIDDEN_CYCLES_KEY);
+      if (hidden) setHiddenCycles(JSON.parse(hidden));
     } catch {
       // storage unavailable — keep defaults
     }
@@ -258,6 +267,15 @@ export default function Home() {
     };
   }, []);
 
+  const persistHiddenCycles = (next: string[]) => {
+    setHiddenCycles(next);
+    try {
+      localStorage.setItem(HIDDEN_CYCLES_KEY, JSON.stringify(next));
+    } catch {
+      // storage unavailable — hidden rings just won't persist
+    }
+  };
+
   const persist = (next: Tracker[]) => {
     setTrackers(next);
     try {
@@ -291,6 +309,10 @@ export default function Home() {
   let dayPct = 0;
   let remaining = "";
   let nowMin = 0;
+  let yearPct = 0;
+  let yearRemaining = "";
+  let monthPct = 0;
+  let monthRemaining = "";
 
   if (now) {
     const ms = now.getMilliseconds();
@@ -315,6 +337,18 @@ export default function Home() {
     dayPct = (secOfDay / 86400) * 100;
     const left = 86400 - secOfDay;
     remaining = `${Math.floor(left / 3600)}h ${pad(Math.floor((left % 3600) / 60))}m left`;
+
+    // Year and month cycles — continuous, so leap years and month lengths
+    // fall out of the Date math.
+    const t = now.getTime();
+    const yearStart = new Date(now.getFullYear(), 0, 1).getTime();
+    const yearEnd = new Date(now.getFullYear() + 1, 0, 1).getTime();
+    yearPct = ((t - yearStart) / (yearEnd - yearStart)) * 100;
+    yearRemaining = `${Math.ceil((yearEnd - t) / 86400000)}d left`;
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
+    monthPct = ((t - monthStart) / (monthEnd - monthStart)) * 100;
+    monthRemaining = `${Math.ceil((monthEnd - t) / 86400000)}d left`;
   }
 
   // Clock segments: clicking ":ss" hides the seconds, and clicking the
@@ -509,6 +543,27 @@ export default function Home() {
           </h1>
           <div className="flex items-center gap-3">
             <p className="text-xs text-(--ink-2)">{dateLine}</p>
+            <button
+              type="button"
+              onClick={() => persistHiddenCycles([])}
+              title="Restore the Year, Month and Day rings"
+              aria-label="Restore hidden progress rings"
+              className="flex h-6 w-6 items-center justify-center rounded-full border border-(--edge) text-(--ink-2) transition-colors hover:border-(--accent) hover:text-(--accent)"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+            </button>
             {installEvt && (
               <button
                 type="button"
@@ -543,25 +598,46 @@ export default function Home() {
 
         <hr className="border-0 border-t border-(--hairline)" />
 
-        {/* Current cycles: day + timers running right now */}
+        {/* Current cycles: year, month, day + timers running right now */}
         <div className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4">
-          <div className="flex flex-col items-center gap-1.5 text-center">
-            <Ring
-              pct={dayPct}
-              color={DAY_COLOR}
-              label="Day"
-              center={
-                <span className="text-base">
-                  {dayPct.toFixed(1)}
-                  <span className="text-xs font-normal text-(--muted)">%</span>
-                </span>
-              }
-            />
-            <div className="flex flex-col">
-              <span className="text-xs font-medium text-(--ink)">Day</span>
-              <span className="text-[11px] text-(--muted)">{remaining}</span>
+          {[
+            { label: "Year", pct: yearPct, status: yearRemaining, color: YEAR_COLOR },
+            { label: "Month", pct: monthPct, status: monthRemaining, color: MONTH_COLOR },
+            { label: "Day", pct: dayPct, status: remaining, color: DAY_COLOR },
+          ]
+            .filter(({ label }) => !hiddenCycles.includes(label))
+            .map(({ label, pct, status, color }) => (
+            <div
+              key={label}
+              className="group relative flex flex-col items-center gap-1.5 text-center"
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  persistHiddenCycles([...hiddenCycles, label])
+                }
+                aria-label={`Hide ${label} progress`}
+                className="absolute -top-1 right-0 hidden h-6 w-6 items-center justify-center rounded-full text-(--muted) hover:bg-(--wash) group-hover:flex"
+              >
+                ×
+              </button>
+              <Ring
+                pct={pct}
+                color={color}
+                label={label}
+                center={
+                  <span className="text-base">
+                    {pct.toFixed(1)}
+                    <span className="text-xs font-normal text-(--muted)">%</span>
+                  </span>
+                }
+              />
+              <div className="flex flex-col">
+                <span className="text-xs font-medium text-(--ink)">{label}</span>
+                <span className="text-[11px] text-(--muted)">{status}</span>
+              </div>
             </div>
-          </div>
+          ))}
 
           {trackerEntries
             .filter(({ state }) => state.active)
