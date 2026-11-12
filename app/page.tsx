@@ -59,21 +59,30 @@ type Tracker = {
 // Categorical slots 2-8 of the validated reference palette (slot 1 blue is the
 // day cycle). Track = lighter step of the same hue. Values live in globals.css.
 const RING_COLORS = [
-  { fill: "stroke-(--series-1)", track: "stroke-(--series-1-track)", disc: "fill-(--series-1-track)" },
-  { fill: "stroke-(--series-2)", track: "stroke-(--series-2-track)", disc: "fill-(--series-2-track)" },
-  { fill: "stroke-(--series-3)", track: "stroke-(--series-3-track)", disc: "fill-(--series-3-track)" },
-  { fill: "stroke-(--series-4)", track: "stroke-(--series-4-track)", disc: "fill-(--series-4-track)" },
-  { fill: "stroke-(--series-5)", track: "stroke-(--series-5-track)", disc: "fill-(--series-5-track)" },
-  { fill: "stroke-(--series-6)", track: "stroke-(--series-6-track)", disc: "fill-(--series-6-track)" },
-  { fill: "stroke-(--series-7)", track: "stroke-(--series-7-track)", disc: "fill-(--series-7-track)" },
+  { fill: "stroke-(--series-1)", track: "stroke-(--series-1-track)", disc: "fill-(--series-1-track)", text: "text-(--series-1)" },
+  { fill: "stroke-(--series-2)", track: "stroke-(--series-2-track)", disc: "fill-(--series-2-track)", text: "text-(--series-2)" },
+  { fill: "stroke-(--series-3)", track: "stroke-(--series-3-track)", disc: "fill-(--series-3-track)", text: "text-(--series-3)" },
+  { fill: "stroke-(--series-4)", track: "stroke-(--series-4-track)", disc: "fill-(--series-4-track)", text: "text-(--series-4)" },
+  { fill: "stroke-(--series-5)", track: "stroke-(--series-5-track)", disc: "fill-(--series-5-track)", text: "text-(--series-5)" },
+  { fill: "stroke-(--series-6)", track: "stroke-(--series-6-track)", disc: "fill-(--series-6-track)", text: "text-(--series-6)" },
+  { fill: "stroke-(--series-7)", track: "stroke-(--series-7-track)", disc: "fill-(--series-7-track)", text: "text-(--series-7)" },
 ];
 
-const YEAR_COLOR = { fill: "stroke-(--year)", track: "stroke-(--year-track)" };
+const YEAR_COLOR = {
+  fill: "stroke-(--year)",
+  track: "stroke-(--year-track)",
+  text: "text-(--year)",
+};
 const MONTH_COLOR = {
   fill: "stroke-(--month)",
   track: "stroke-(--month-track)",
+  text: "text-(--month)",
 };
-const DAY_COLOR = { fill: "stroke-(--day)", track: "stroke-(--day-track)" };
+const DAY_COLOR = {
+  fill: "stroke-(--day)",
+  track: "stroke-(--day-track)",
+  text: "text-(--day)",
+};
 
 const DEFAULT_TRACKERS: Tracker[] = [
   { id: "work", label: "Working hours", start: "09:00", end: "18:00", color: 0 },
@@ -133,6 +142,29 @@ function trackerState(tracker: Tracker, nowMin: number) {
     };
   // Daytime gap after this morning's end: already finished — stays at 100%.
   return { pct: 100, status: "Done", active: false };
+}
+
+// Status line under each ring. The remaining duration is the number people
+// glance for, so it sits in a pill tinted with the ring's own track color;
+// other statuses ("Starts in…", "Done") stay quiet muted text.
+function StatusText({
+  status,
+  color,
+}: {
+  status: string;
+  color: { text: string };
+}) {
+  if (status.endsWith(" left")) {
+    return (
+      <span className="mt-0.5 inline-flex items-baseline gap-1 self-center">
+        <span className={`text-xs font-semibold tabular-nums ${color.text}`}>
+          {status.slice(0, -" left".length)}
+        </span>
+        <span className="text-[10px] text-(--ink-2)">left</span>
+      </span>
+    );
+  }
+  return <span className="text-[11px] text-(--muted)">{status}</span>;
 }
 
 function Ring({
@@ -987,7 +1019,7 @@ export default function Home() {
           <span className="text-[11px] tabular-nums text-(--ink-2)">
             {tracker.start} – {tracker.end}
           </span>
-          <span className="text-[11px] text-(--muted)">{state.status}</span>
+          <StatusText status={state.status} color={color} />
         </div>
       </div>
     );
@@ -1110,9 +1142,10 @@ export default function Home() {
                     <span className="text-xs font-medium text-(--ink)">
                       {item.cycle.id}
                     </span>
-                    <span className="text-[11px] text-(--muted)">
-                      {item.cycle.status}
-                    </span>
+                    <StatusText
+                      status={item.cycle.status}
+                      color={item.cycle.color}
+                    />
                   </div>
                 </div>
               ) : (
